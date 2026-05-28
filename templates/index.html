@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Galaxy Map - Galactic Route NMS{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+        <h1>Galaxy Map</h1>
+        <p>Explore your discovered systems across the galaxy</p>
+    </div>
+    <div>
+        <a href="{{ url_for('add_system') }}" class="btn">+ Add System</a>
+        <a href="{{ url_for('upload_save') }}" class="btn btn-secondary">⬆ Import Save</a>
+    </div>
+</div>
+
+<!-- Galaxy Map Canvas -->
+<div class="card">
+    <canvas id="galaxyMap"></canvas>
+    <div class="map-legend">
+        <div class="legend-item">
+            <div class="legend-dot" style="background: #e94560;"></div>
+            <span>Star System</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background: rgba(233, 69, 96, 0.2);"></div>
+            <span>Selected</span>
+        </div>
+        <div style="border-top: 1px solid #16213e; margin: 0.5rem 0; padding-top: 0.5rem; font-size: 0.8rem;">
+            <p><strong>Controls:</strong></p>
+            <p>Scroll: Zoom</p>
+            <p>Click: Select</p>
+        </div>
+    </div>
+</div>
+
+<!-- Systems List -->
+<div style="margin-top: 2rem;">
+    <h2>Discovered Systems ({{ systems|length }})</h2>
+    {% if systems %}
+        <div class="system-list">
+            {% for system in systems %}
+                <div class="card system-card" onclick="window.location.href='{{ url_for('view_system', system_id=system.id) }}'">
+                    <h3>{{ system.name }}</h3>
+                    <p class="system-coords">X: {{ system.x|round(2) }} | Y: {{ system.y|round(2) }} | Z: {{ system.z|round(2) }}</p>
+                    <div class="system-info">
+                        {% if system.system_type %}<p>Type: {{ system.system_type }}</p>{% endif %}
+                        {% if system.star_type %}<p>Star: {{ system.star_type }}</p>{% endif %}
+                        {% if system.planets_count %}<p>Planets: {{ system.planets_count }}</p>{% endif %}
+                    </div>
+                    <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">Discovered: {{ system.discovered_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card" style="text-align: center; padding: 2rem;">
+            <p>No systems discovered yet. Import a save file or add one manually to get started!</p>
+            <a href="{{ url_for('upload_save') }}" class="btn" style="margin-top: 1rem;">Import Save File</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+{% endblock %}

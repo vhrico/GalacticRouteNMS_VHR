@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Import Save File - Galactic Route NMS{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <h1>Import From Save File</h1>
+    <p>Upload your No Man's Sky save file to automatically import discovered systems</p>
+
+    <div class="card" style="margin: 2rem 0;">
+        <h3 style="color: #e94560; margin-bottom: 1rem;">ℹ️ How to find your save file</h3>
+        <details style="cursor: pointer;">
+            <summary style="color: #aaa; margin-bottom: 1rem;">Windows</summary>
+            <p style="background: #1a1a2e; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.9rem; margin-top: 0.5rem;">
+                %APPDATA%\Hello Games\No Man's Sky\<br>
+                Look for <strong>save</strong> folder
+            </p>
+        </details>
+        <details style="cursor: pointer;">
+            <summary style="color: #aaa; margin-bottom: 1rem;">Mac</summary>
+            <p style="background: #1a1a2e; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.9rem; margin-top: 0.5rem;">
+                ~/Library/Application Support/Hello Games/No Man's Sky/<br>
+                Look for <strong>save</strong> folder
+            </p>
+        </details>
+        <details style="cursor: pointer;">
+            <summary style="color: #aaa; margin-bottom: 1rem;">Linux</summary>
+            <p style="background: #1a1a2e; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.9rem; margin-top: 0.5rem;">
+                ~/.local/share/Hello Games/No Man's Sky/<br>
+                Look for <strong>save</strong> folder
+            </p>
+        </details>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="card">
+        <div class="form-group">
+            <label for="file">Select Save File</label>
+            <input type="file" id="file" name="file" required accept="*">
+            <p style="font-size: 0.85rem; color: #888; margin-top: 0.5rem;">Maximum file size: 16MB</p>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn">Import Systems</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+
+    <div class="card" style="background: rgba(15, 52, 96, 0.3); border-color: #0f3460; margin-top: 2rem;">
+        <h3 style="color: #aaa; margin-bottom: 1rem;">⚠️ Note</h3>
+        <p>The save file parser is still in development. Not all save file formats may be supported yet. We're working on improving compatibility with different NMS versions.</p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Galactic Route NMS{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <a href="{{ url_for('index') }}" class="brand">🚀 Galactic Route NMS</a>
+            <ul>
+                <li><a href="{{ url_for('index') }}">Galaxy Map</a></li>
+                <li><a href="{{ url_for('view_journal') }}">Journal</a></li>
+                <li><a href="{{ url_for('upload_save') }}">Import Save</a></li>
+                <li><a href="{{ url_for('stats') }}">Stats</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Galactic Route NMS. Track your No Man's Sky journey.</p>
+            <p>Licensed under GNU GPL v3.0</p>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}{{ system.name }} - Galactic Route NMS{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 2rem;">
+    <div>
+        <h1>{{ system.name }}</h1>
+        <p class="system-coords">X: {{ system.x }} | Y: {{ system.y }} | Z: {{ system.z }}</p>
+    </div>
+    <div>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">← Back to Map</a>
+    </div>
+</div>
+
+<!-- System Details -->
+<div class="card">
+    <h2>System Information</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+        <div>
+            <h3 style="color: #e94560; font-size: 0.9rem; text-transform: uppercase; margin-bottom: 0.5rem;">Coordinates</h3>
+            <p>X: <code>{{ system.x }}</code></p>
+            <p>Y: <code>{{ system.y }}</code></p>
+            <p>Z: <code>{{ system.z }}</code></p>
+        </div>
+        <div>
+            <h3 style="color: #e94560; font-size: 0.9rem; text-transform: uppercase; margin-bottom: 0.5rem;">Details</h3>
+            {% if system.galaxy_address %}<p>Galaxy Address: <code>{{ system.galaxy_address }}</code></p>{% endif %}
+            {% if system.system_type %}<p>Type: {{ system.system_type }}</p>{% endif %}
+            {% if system.star_type %}<p>Star Type: {{ system.star_type }}</p>{% endif %}
+            {% if system.planets_count %}<p>Planets: {{ system.planets_count }}</p>{% endif %}
+        </div>
+    </div>
+    {% if system.notes %}
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #16213e;">
+            <h3 style="color: #e94560; font-size: 0.9rem; text-transform: uppercase; margin-bottom: 0.5rem;">Notes</h3>
+            <p>{{ system.notes }}</p>
+        </div>
+    {% endif %}
+    <p style="font-size: 0.85rem; color: #666; margin-top: 1rem;">Discovered: {{ system.discovered_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+</div>
+
+<!-- Journal Entries for this System -->
+<div style="margin-top: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Journal Entries ({{ entries|length }})</h2>
+        <a href="{{ url_for('add_entry') }}?system_id={{ system.id }}" class="btn">+ Add Entry</a>
+    </div>
+    
+    {% if entries %}
+        <div class="entry-list">
+            {% for entry in entries %}
+                <div class="card entry-card" onclick="window.location.href='{{ url_for('edit_entry', entry_id=entry.id) }}'">
+                    <div class="entry-header">
+                        <div>
+                            <div class="entry-title">{{ entry.title }}</div>
+                            <p class="entry-meta">{{ entry.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                        </div>
+                    </div>
+                    <p>{{ entry.content[:200] }}{% if entry.content|length > 200 %}...{% endif %}</p>
+                    {% if entry.get_tags() %}
+                        <div class="entry-tags">
+                            {% for tag in entry.get_tags() %}
+                                <span class="tag">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card" style="text-align: center; padding: 2rem;">
+            <p>No journal entries for this system yet.</p>
+            <a href="{{ url_for('add_entry') }}?system_id={{ system.id }}" class="btn" style="margin-top: 1rem;">Create First Entry</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
