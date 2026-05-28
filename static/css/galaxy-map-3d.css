@@ -1,0 +1,80 @@
+/* 3D Galaxy Map Styles */
+
+#galaxyMap3D {
+  width: 100%;
+  height: 600px;
+  border-radius: 8px;
+}
+
+.map-controls {
+  font-family: 'Courier New', monospace;
+}
+
+.map-controls button {
+  background: linear-gradient(135deg, #e94560 0%, #c23450 100%);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.map-controls button:hover {
+  background: linear-gradient(135deg, #f05570 0%, #d24460 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+}
+
+.map-controls button:active {
+  transform: translateY(0);
+}
+
+.map-legend {
+  font-family: 'Courier New', monospace;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.legend-dot {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+/* Responsive design for 3D map */
+@media (max-width: 768px) {
+  #galaxyMap3D {
+    height: 400px;
+  }
+  
+  .map-controls {
+    top: 10px !important;
+    right: 10px !important;
+    padding: 10px !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .map-legend {
+    bottom: 10px !important;
+    left: 10px !important;
+    padding: 10px !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* Animation for system selection */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.system-selected {
+  animation: pulse 1.5s infinite;
+}
