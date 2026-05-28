@@ -6,7 +6,7 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
     <div>
         <h1>Galaxy Map</h1>
-        <p>Explore your discovered systems across the galaxy</p>
+        <p>Explore your discovered systems across the galaxy in 3D</p>
     </div>
     <div>
         <a href="{{ url_for('add_system') }}" class="btn">+ Add System</a>
@@ -14,22 +14,39 @@
     </div>
 </div>
 
-<!-- Galaxy Map Canvas -->
-<div class="card">
-    <canvas id="galaxyMap"></canvas>
-    <div class="map-legend">
-        <div class="legend-item">
-            <div class="legend-dot" style="background: #e94560;"></div>
-            <span>Star System</span>
+<!-- 3D Galaxy Map Canvas -->
+<div class="card" style="position: relative; padding: 0; overflow: hidden;">
+    <canvas id="galaxyMap3D" style="display: block; width: 100%; height: 600px;"></canvas>
+    
+    <!-- Map Controls -->
+    <div class="map-controls" style="position: absolute; top: 20px; right: 20px; background: rgba(22, 33, 62, 0.9); border: 2px solid #e94560; border-radius: 8px; padding: 15px; z-index: 10;">
+        <div style="color: #e9eaea; font-weight: bold; margin-bottom: 10px;">3D Map Controls</div>
+        <div style="font-size: 0.9rem; color: #aaa; line-height: 1.8;">
+            <p><strong>Mouse:</strong></p>
+            <p>• Left Drag: Rotate</p>
+            <p>• Right Drag: Pan</p>
+            <p>• Scroll: Zoom</p>
+            <p style="margin-top: 10px;"><strong>Click:</strong> Select System</p>
+        </div>
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+            <button onclick="window.galaxyMap.resetView()" class="btn" style="padding: 8px 12px; font-size: 0.9rem;">Reset View</button>
+        </div>
+    </div>
+    
+    <!-- Legend -->
+    <div class="map-legend" style="position: absolute; bottom: 20px; left: 20px; background: rgba(22, 33, 62, 0.9); border: 2px solid #e94560; border-radius: 8px; padding: 15px;">
+        <div style="color: #e9eaea; font-weight: bold; margin-bottom: 10px;">Legend</div>
+        <div class="legend-item" style="margin-bottom: 8px;">
+            <div class="legend-dot" style="background: #e94560; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px;"></div>
+            <span style="color: #aaa;">Star System</span>
+        </div>
+        <div class="legend-item" style="margin-bottom: 8px;">
+            <div class="legend-dot" style="background: #e94560; display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-right: 8px; opacity: 0.5;"></div>
+            <span style="color: #aaa;">Connected Systems</span>
         </div>
         <div class="legend-item">
-            <div class="legend-dot" style="background: rgba(233, 69, 96, 0.2);"></div>
-            <span>Selected</span>
-        </div>
-        <div style="border-top: 1px solid #16213e; margin: 0.5rem 0; padding-top: 0.5rem; font-size: 0.8rem;">
-            <p><strong>Controls:</strong></p>
-            <p>Scroll: Zoom</p>
-            <p>Click: Select</p>
+            <div class="legend-dot" style="background: rgba(233, 69, 96, 0.8); display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px;"></div>
+            <span style="color: #aaa;">Selected</span>
         </div>
     </div>
 </div>
@@ -62,5 +79,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<!-- Three.js and OrbitControls libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
+
+<!-- 3D Galaxy Map -->
+<script src="{{ url_for('static', filename='js/galaxy-map-3d.js') }}"></script>
 {% endblock %}
