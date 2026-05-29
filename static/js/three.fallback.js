@@ -1,29 +1,27 @@
 /**
- * Three.js Fallback Loader
- * Provides graceful fallback to local Three.js if CDN is unavailable
+ * Local Three.js loader.
+ *
+ * This keeps test and production behavior aligned by loading the map
+ * dependencies from Flask static files instead of external CDNs.
  */
 
 (function() {
   'use strict';
 
-  const FALLBACK_CONFIG = {
-    THREE_URL: '/static/lib/three.min.js',
-    ORBIT_CONTROLS_URL: '/static/lib/OrbitControls.js',
-    CDN_TIMEOUT: 5000, // 5 seconds
-    MAX_RETRIES: 2
+  const CONFIG = {
+    THREE_URL: '/static/js/vendor/three.r128.min.js',
+    ORBIT_CONTROLS_URL: '/static/js/vendor/OrbitControls.r128.js',
+    MAP_URL: '/static/js/galaxy-map-3d.js',
+    SCRIPT_TIMEOUT: 5000
   };
 
-  /**
-   * Load script from URL with timeout
-   */
-  function loadScriptWithTimeout(url, timeout = FALLBACK_CONFIG.CDN_TIMEOUT) {
+  function loadScript(url) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      
       const timeoutId = setTimeout(() => {
         script.remove();
         reject(new Error(`Script load timeout: ${url}`));
-      }, timeout);
+      }, CONFIG.SCRIPT_TIMEOUT);
 
       script.onload = () => {
         clearTimeout(timeoutId);
@@ -36,198 +34,74 @@
       };
 
       script.src = url;
-      script.async = true;
+      script.async = false;
       document.head.appendChild(script);
     });
   }
 
-  /**
-   * Try loading from CDN first, fallback to local
-   */
-  async function loadThreeWithFallback() {
-    const CDN_THREE = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-    const CDN_CONTROLS = 'https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js';
-
-    console.info('[3D Map] Attempting to load Three.js from CDN...');
-    
-    try {
-      await Promise.race([
-        loadScriptWithTimeout(CDN_THREE, FALLBACK_CONFIG.CDN_TIMEOUT),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('CDN timeout')), FALLBACK_CONFIG.CDN_TIMEOUT)
-        )
-      ]);
-      console.info('[3D Map] ✓ Three.js loaded from CDN');
-    } catch (cdnError) {
-      console.warn('[3D Map] ⚠ CDN failed:', cdnError.message);
-      console.info('[3D Map] Attempting to load Three.js from local fallback...');
-      
-      try {
-        await loadScriptWithTimeout(FALLBACK_CONFIG.THREE_URL);
-        console.info('[3D Map] ✓ Three.js loaded from local fallback');
-      } catch (localError) {
-        console.error('[3D Map] ✗ Failed to load Three.js from both CDN and local:', localError.message);
-        throw new Error('Three.js is unavailable. Cannot initialize 3D map.');
-      }
-    }
-
-    // Load OrbitControls
-    console.info('[3D Map] Loading OrbitControls...');
-    try {
-      await Promise.race([
-        loadScriptWithTimeout(CDN_CONTROLS, FALLBACK_CONFIG.CDN_TIMEOUT),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('CDN timeout')), FALLBACK_CONFIG.CDN_TIMEOUT)
-        )
-      ]);
-      console.info('[3D Map] ✓ OrbitControls loaded from CDN');
-    } catch (cdnError) {
-      console.warn('[3D Map] ⚠ CDN failed:', cdnError.message);
-      console.info('[3D Map] Attempting to load OrbitControls from local fallback...');
-      
-      try {
-        await loadScriptWithTimeout(FALLBACK_CONFIG.ORBIT_CONTROLS_URL);
-        console.info('[3D Map] ✓ OrbitControls loaded from local fallback');
-      } catch (localError) {
-        console.error('[3D Map] ✗ Failed to load OrbitControls:', localError.message);
-        throw new Error('OrbitControls is unavailable. Cannot initialize 3D map.');
-      }
-    }
-
-    if (typeof THREE === 'undefined') {
-      throw new Error('Three.js failed to load properly');
-    }
-
-    return true;
-  }
-
-  /**
-   * Check WebGL support
-   */
   function checkWebGLSupport() {
     try {
       const canvas = document.createElement('canvas');
-      return !!(
+      return Boolean(
         window.WebGLRenderingContext &&
         (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
       );
-    } catch (e) {
+    } catch (error) {
       return false;
     }
   }
 
-  /**
-   * Show error message to user
-   */
-  function showErrorMessage(message, isDev = false) {
+  function showErrorMessage(message) {
     const mapContainer = document.querySelector('.card');
     if (!mapContainer) return;
 
     const errorElement = document.createElement('div');
-    errorElement.style.cssText = `
-      padding: 20px;
-      margin: 0;
-      background: #2a2a3e;
-      border: 2px solid #e94560;
-      border-radius: 8px;
-      color: #e9eaea;
-      font-family: 'Courier New', monospace;
-      text-align: center;
-    `;
+    errorElement.style.cssText = [
+      'min-height: 600px',
+      'display: flex',
+      'align-items: center',
+      'justify-content: center',
+      'padding: 2rem',
+      'background: #1a1a2e',
+      'color: #eaeaea',
+      'text-align: center'
+    ].join(';');
+    errorElement.textContent = message;
 
-    let errorHTML = `
-      <h3 style="color: #e94560; margin-top: 0;">⚠ 3D Map Unavailable</h3>
-      <p>${message}</p>
-    `;
-
-    if (isDev) {
-      errorHTML += '<p style="font-size: 0.85rem; color: #aaa; margin: 15px 0 0 0;">Check browser console for details.</p>';
-    }
-
-    errorElement.innerHTML = errorHTML;
     const canvas = mapContainer.querySelector('canvas');
     if (canvas) {
       mapContainer.replaceChild(errorElement, canvas);
     }
   }
 
-  /**
-   * Initialize 3D map with fallback handling
-   */
-  window.init3DMap = async function() {
+  async function init3DMap() {
     const mapElement = document.getElementById('galaxyMap3D');
-    if (!mapElement) {
-      console.info('[3D Map] No galaxy map element found. Skipping initialization.');
-      return;
-    }
+    if (!mapElement) return;
 
-    // Check WebGL support first
     if (!checkWebGLSupport()) {
-      console.error('[3D Map] WebGL is not supported on this browser');
-      showErrorMessage(
-        'Your browser does not support WebGL, which is required for the 3D galaxy map. ' +
-        'Please try a modern browser like Chrome, Firefox, or Safari.'
-      );
+      showErrorMessage('Your browser does not support WebGL, which is required for the 3D galaxy map.');
       return;
     }
 
     try {
-      console.info('[3D Map] Initializing 3D galaxy map with fallback support...');
-      
-      // Load Three.js with fallback
-      await loadThreeWithFallback();
-
-      // Load 3D map after Three.js is ready
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-          loadGalaxyMapScript();
-        });
-      } else {
-        loadGalaxyMapScript();
-      }
-
+      await loadScript(CONFIG.THREE_URL);
+      await loadScript(CONFIG.ORBIT_CONTROLS_URL);
+      await loadScript(CONFIG.MAP_URL);
     } catch (error) {
-      console.error('[3D Map] Initialization failed:', error.message);
-      showErrorMessage(
-        'Failed to load the 3D galaxy map. ' +
-        'The interactive map requires Three.js rendering library. ' +
-        'Please refresh the page or try a different browser.'
-      );
+      console.error('[3D Map] Initialization failed:', error);
+      showErrorMessage('Failed to load the local 3D galaxy map assets.');
     }
-  };
-
-  /**
-   * Load the galaxy map script after Three.js is available
-   */
-  function loadGalaxyMapScript() {
-    const script = document.createElement('script');
-    script.src = '/static/js/galaxy-map-3d.js';
-    
-    script.onerror = () => {
-      console.error('[3D Map] Failed to load galaxy-map-3d.js');
-      showErrorMessage(
-        'Failed to load galaxy map visualization. ' +
-        'Please refresh the page to try again.'
-      );
-    };
-
-    document.head.appendChild(script);
   }
 
-  /**
-   * Expose configuration for debugging
-   */
   window.ThreeMapConfig = {
-    ...FALLBACK_CONFIG,
+    ...CONFIG,
     checkWebGL: checkWebGLSupport,
-    version: '1.0.0'
+    version: '2.0.0-local'
   };
 
-  // Auto-initialize when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', window.init3DMap);
+    document.addEventListener('DOMContentLoaded', init3DMap);
   } else {
-    window.init3DMap();
+    init3DMap();
   }
-
 })();

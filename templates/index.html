@@ -81,9 +81,8 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Three.js and OrbitControls must use the same release. Loading Three.js again after
-     OrbitControls removes THREE.OrbitControls and prevents the map from initializing. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
-<script src="{{ url_for('static', filename='js/galaxy-map-3d.js') }}"></script>
+<!-- Serve map dependencies from Flask static files so testing and production render the same assets. -->
+<script src="{{ url_for('static', filename='js/vendor/three.r128.min.js', v='local-r128') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/OrbitControls.r128.js', v='local-r128') }}"></script>
+<script src="{{ url_for('static', filename='js/galaxy-map-3d.js', v='local-r128') }}"></script>
 {% endblock %}
