@@ -349,9 +349,35 @@ class GalaxyMap3D {
 document.addEventListener('DOMContentLoaded', function() {
   const mapElement = document.getElementById('galaxyMap3D');
   if (mapElement) {
+    const showMapError = (message) => {
+      const container = mapElement.parentElement;
+      if (!container) return;
+
+      const errorElement = document.createElement('div');
+      errorElement.style.cssText = [
+        'min-height: 600px',
+        'display: flex',
+        'align-items: center',
+        'justify-content: center',
+        'padding: 2rem',
+        'background: #1a1a2e',
+        'color: #eaeaea',
+        'text-align: center'
+      ].join(';');
+      errorElement.textContent = message;
+      container.replaceChild(errorElement, mapElement);
+    };
+
     // Check if Three.js and OrbitControls are loaded
     if (typeof THREE === 'undefined') {
       console.error('Three.js is required for 3D map');
+      showMapError('The 3D map could not load Three.js. Check your internet connection or CDN access.');
+      return;
+    }
+
+    if (typeof THREE.OrbitControls === 'undefined') {
+      console.error('OrbitControls is required for 3D map');
+      showMapError('The 3D map could not load OrbitControls. Check the browser console for the blocked script.');
       return;
     }
     

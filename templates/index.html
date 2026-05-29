@@ -10,7 +10,7 @@
     </div>
     <div>
         <a href="{{ url_for('add_system') }}" class="btn">+ Add System</a>
-        <a href="{{ url_for('upload_save') }}" class="btn btn-secondary">⬆ Import Save</a>
+        <a href="{{ url_for('upload_save') }}" class="btn btn-secondary">Import Save</a>
     </div>
 </div>
 
@@ -23,13 +23,13 @@
         <div style="color: #e9eaea; font-weight: bold; margin-bottom: 10px;">3D Map Controls</div>
         <div style="font-size: 0.9rem; color: #aaa; line-height: 1.8;">
             <p><strong>Mouse:</strong></p>
-            <p>• Left Drag: Rotate</p>
-            <p>• Right Drag: Pan</p>
-            <p>• Scroll: Zoom</p>
+            <p>- Left Drag: Rotate</p>
+            <p>- Right Drag: Pan</p>
+            <p>- Scroll: Zoom</p>
             <p style="margin-top: 10px;"><strong>Click:</strong> Select System</p>
         </div>
         <div style="margin-top: 15px; display: flex; gap: 10px;">
-            <button onclick="window.galaxyMap.resetView()" class="btn" style="padding: 8px 12px; font-size: 0.9rem;">Reset View</button>
+            <button onclick="window.galaxyMap && window.galaxyMap.resetView()" class="btn" style="padding: 8px 12px; font-size: 0.9rem;">Reset View</button>
         </div>
     </div>
     
@@ -57,11 +57,9 @@
     {% if systems %}
         <div class="system-list">
             {% for system in systems %}
-                <!-- Set the URL in a data attribute -->
-<div class="card system-card" 
-     data-url="{{ url_for('view_system', system_id=system.id) }}"
-     onclick="window.location.href=this.dataset.url">
-</div>
+                <div class="card system-card"
+                     data-url="{{ url_for('view_system', system_id=system.id) }}"
+                     onclick="window.location.href=this.dataset.url">
                     <h3>{{ system.name }}</h3>
                     <p class="system-coords">X: {{ system.x|round(2) }} | Y: {{ system.y|round(2) }} | Z: {{ system.z|round(2) }}</p>
                     <div class="system-info">
@@ -83,11 +81,9 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Three.js and OrbitControls libraries -->
+<!-- Three.js and OrbitControls must use the same release. Loading Three.js again after
+     OrbitControls removes THREE.OrbitControls and prevents the map from initializing. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
-
-<!-- 3D Galaxy Map -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
 <script src="{{ url_for('static', filename='js/galaxy-map-3d.js') }}"></script>
 {% endblock %}
