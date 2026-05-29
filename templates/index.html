@@ -57,7 +57,11 @@
     {% if systems %}
         <div class="system-list">
             {% for system in systems %}
-                <div class="card system-card" onclick="window.location.href='{{ url_for('view_system', system_id=system.id) }}'">
+                <!-- Set the URL in a data attribute -->
+<div class="card system-card" 
+     data-url="{{ url_for('view_system', system_id=system.id) }}"
+     onclick="window.location.href=this.dataset.url">
+</div>
                     <h3>{{ system.name }}</h3>
                     <p class="system-coords">X: {{ system.x|round(2) }} | Y: {{ system.y|round(2) }} | Z: {{ system.z|round(2) }}</p>
                     <div class="system-info">
