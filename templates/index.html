@@ -2,64 +2,72 @@
 
 {% block title %}Galaxy Map - Galactic Route NMS{% endblock %}
 
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/galaxy-map-3d.css') }}">
+{% endblock %}
+
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+<div class="page-header">
     <div>
         <h1>Galaxy Map</h1>
-        <p>Explore your discovered systems across the galaxy in 3D</p>
+        <p>Build a local 3D view from your entered systems, then save the current view as an image.</p>
     </div>
-    <div>
-        <a href="{{ url_for('add_system') }}" class="btn">+ Add System</a>
+    <div class="header-actions">
+        <a href="{{ url_for('add_system') }}" class="btn">Add System</a>
         <a href="{{ url_for('upload_save') }}" class="btn btn-secondary">Import Save</a>
     </div>
 </div>
 
-<!-- 3D Galaxy Map Canvas -->
-<div class="card" style="position: relative; padding: 0; overflow: hidden;">
-    <canvas id="galaxyMap3D" style="display: block; width: 100%; height: 600px;"></canvas>
-    
-    <!-- Map Controls -->
-    <div class="map-controls" style="position: absolute; top: 20px; right: 20px; background: rgba(22, 33, 62, 0.9); border: 2px solid #e94560; border-radius: 8px; padding: 15px; z-index: 10;">
-        <div style="color: #e9eaea; font-weight: bold; margin-bottom: 10px;">3D Map Controls</div>
-        <div style="font-size: 0.9rem; color: #aaa; line-height: 1.8;">
-            <p><strong>Mouse:</strong></p>
-            <p>- Left Drag: Rotate</p>
-            <p>- Right Drag: Pan</p>
-            <p>- Scroll: Zoom</p>
-            <p style="margin-top: 10px;"><strong>Click:</strong> Select System</p>
-        </div>
-        <div style="margin-top: 15px; display: flex; gap: 10px;">
-            <button onclick="window.galaxyMap && window.galaxyMap.resetView()" class="btn" style="padding: 8px 12px; font-size: 0.9rem;">Reset View</button>
-        </div>
-    </div>
-    
-    <!-- Legend -->
-    <div class="map-legend" style="position: absolute; bottom: 20px; left: 20px; background: rgba(22, 33, 62, 0.9); border: 2px solid #e94560; border-radius: 8px; padding: 15px;">
-        <div style="color: #e9eaea; font-weight: bold; margin-bottom: 10px;">Legend</div>
-        <div class="legend-item" style="margin-bottom: 8px;">
-            <div class="legend-dot" style="background: #e94560; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px;"></div>
-            <span style="color: #aaa;">Star System</span>
-        </div>
-        <div class="legend-item" style="margin-bottom: 8px;">
-            <div class="legend-dot" style="background: #e94560; display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-right: 8px; opacity: 0.5;"></div>
-            <span style="color: #aaa;">Connected Systems</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-dot" style="background: rgba(233, 69, 96, 0.8); display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px;"></div>
-            <span style="color: #aaa;">Selected</span>
-        </div>
-    </div>
-</div>
+<section class="map-panel">
+    <canvas id="galaxyMap3D" aria-label="Interactive 3D galaxy map"></canvas>
 
-<!-- Systems List -->
-<div style="margin-top: 2rem;">
-    <h2>Discovered Systems ({{ systems|length }})</h2>
+    <div class="map-toolbar" aria-label="Map actions">
+        <button type="button" data-map-action="fit">Fit</button>
+        <button type="button" data-map-action="reset">Reset</button>
+        <button type="button" data-map-action="snapshot">Save PNG</button>
+    </div>
+
+    <aside id="selectedSystemPanel" class="selected-system-panel" hidden>
+        <h2 id="selectedSystemName"></h2>
+        <p id="selectedSystemCoords"></p>
+        <a id="selectedSystemLink" class="btn btn-secondary" href="#">Open</a>
+    </aside>
+
+    <div id="mapStatus" class="map-status" role="status" aria-live="polite"></div>
+</section>
+
+{% if snapshots %}
+<section class="snapshot-strip" aria-label="Saved map images">
+    <div class="section-heading">
+        <h2>Saved 3D Images</h2>
+        <span>{{ snapshots|length }}</span>
+    </div>
+    <div class="snapshot-list">
+        {% for snapshot in snapshots %}
+            <a class="snapshot-thumb" href="{{ url_for('uploaded_map_snapshot', filename=snapshot.filename) }}" target="_blank" rel="noopener">
+                <img src="{{ url_for('uploaded_map_snapshot', filename=snapshot.filename) }}" alt="Saved galaxy map snapshot">
+                <span>{{ snapshot.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="systems-section">
+    <div class="section-heading">
+        <h2>Discovered Systems</h2>
+        <span>{{ systems|length }}</span>
+    </div>
+
     {% if systems %}
         <div class="system-list">
             {% for system in systems %}
-                <div class="card system-card"
-                     data-url="{{ url_for('view_system', system_id=system.id) }}"
-                     onclick="window.location.href=this.dataset.url">
+                <article class="card system-card"
+                         data-url="{{ url_for('view_system', system_id=system.id) }}"
+                         onclick="window.location.href=this.dataset.url">
+                    {% if system.images %}
+                        <img class="system-card-image" src="{{ url_for('uploaded_system_image', filename=system.images[0].filename) }}" alt="{{ system.images[0].caption or system.name }}">
+                    {% endif %}
                     <h3>{{ system.name }}</h3>
                     <p class="system-coords">X: {{ system.x|round(2) }} | Y: {{ system.y|round(2) }} | Z: {{ system.z|round(2) }}</p>
                     <div class="system-info">
@@ -67,21 +75,20 @@
                         {% if system.star_type %}<p>Star: {{ system.star_type }}</p>{% endif %}
                         {% if system.planets_count %}<p>Planets: {{ system.planets_count }}</p>{% endif %}
                     </div>
-                    <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">Discovered: {{ system.discovered_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                </div>
+                    <p class="muted">Discovered: {{ system.discovered_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </article>
             {% endfor %}
         </div>
     {% else %}
-        <div class="card" style="text-align: center; padding: 2rem;">
-            <p>No systems discovered yet. Import a save file or add one manually to get started!</p>
-            <a href="{{ url_for('upload_save') }}" class="btn" style="margin-top: 1rem;">Import Save File</a>
+        <div class="empty-state">
+            <p>No systems added yet.</p>
+            <a href="{{ url_for('add_system') }}" class="btn">Add First System</a>
         </div>
     {% endif %}
-</div>
+</section>
 {% endblock %}
 
 {% block scripts %}
-<!-- Serve map dependencies from Flask static files so testing and production render the same assets. -->
 <script src="{{ url_for('static', filename='js/vendor/three.r128.min.js', v='local-r128') }}"></script>
 <script src="{{ url_for('static', filename='js/vendor/OrbitControls.r128.js', v='local-r128') }}"></script>
 <script src="{{ url_for('static', filename='js/galaxy-map-3d.js', v='local-r128') }}"></script>

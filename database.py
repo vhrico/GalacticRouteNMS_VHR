@@ -26,6 +26,13 @@ class System(db.Model):
     
     # Relationships
     journal_entries = db.relationship('JournalEntry', backref='system', lazy=True, cascade='all, delete-orphan')
+    images = db.relationship(
+        'SystemImage',
+        back_populates='system',
+        lazy=True,
+        cascade='all, delete-orphan',
+        order_by='desc(SystemImage.uploaded_at)'
+    )
     
     def to_dict(self):
         return {
@@ -44,6 +51,22 @@ class System(db.Model):
     
     def __repr__(self):
         return f'<System {self.name}>'
+
+class SystemImage(db.Model):
+    """Image uploaded for a discovered star system"""
+    __tablename__ = 'system_images'
+
+    id = db.Column(db.Integer, primary_key=True)
+    system_id = db.Column(db.Integer, db.ForeignKey('systems.id'), nullable=False, index=True)
+    filename = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(255))
+    caption = db.Column(db.String(255))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    system = db.relationship('System', back_populates='images')
+
+    def __repr__(self):
+        return f'<SystemImage {self.filename}>'
 
 class JournalEntry(db.Model):
     """Represents a journal entry for a system or general adventure"""

@@ -72,6 +72,37 @@ nav a:hover {
   padding: 0 1rem;
 }
 
+.page-header,
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.page-header p,
+.muted {
+  color: #9aa8b8;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.section-heading h2 {
+  margin: 0;
+}
+
+.section-heading span {
+  color: #ffcf66;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
 /* Main content */
 main {
   min-height: calc(100vh - 200px);
@@ -115,6 +146,13 @@ button:hover, .btn:hover {
 
 button:active, .btn:active {
   transform: scale(0.98);
+}
+
+button:disabled,
+.btn:disabled {
+  cursor: wait;
+  opacity: 0.6;
+  transform: none;
 }
 
 .btn-secondary {
@@ -234,11 +272,21 @@ textarea {
 
 .system-card {
   cursor: pointer;
+  overflow: hidden;
 }
 
 .system-card h3 {
   color: var(--highlight-color);
   margin-bottom: 0.5rem;
+}
+
+.system-card-image {
+  display: block;
+  width: calc(100% + 3rem);
+  height: 170px;
+  object-fit: cover;
+  margin: -1.5rem -1.5rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .system-info {
@@ -252,6 +300,63 @@ textarea {
   font-size: 0.85rem;
   color: #888;
   margin: 0.5rem 0;
+}
+
+.systems-section,
+.snapshot-strip {
+  margin-top: 2rem;
+}
+
+.empty-state {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 21, 35, 0.74);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-state .btn {
+  margin-top: 1rem;
+}
+
+.system-media-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.75fr);
+  gap: 1.5rem;
+  align-items: start;
+  margin-top: 2rem;
+}
+
+.image-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.system-image {
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(16, 21, 35, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.system-image img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.system-image figcaption {
+  color: #c8d0dc;
+  font-size: 0.9rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.image-upload-card {
+  position: sticky;
+  top: 6rem;
 }
 
 /* Journal entries */
@@ -332,6 +437,16 @@ footer {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .page-header,
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-actions {
+    justify-content: flex-start;
+  }
+
   nav ul {
     gap: 1rem;
     font-size: 0.85rem;
@@ -347,5 +462,13 @@ footer {
   
   #galaxyMap {
     height: 400px;
+  }
+
+  .system-media-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .image-upload-card {
+    position: static;
   }
 }

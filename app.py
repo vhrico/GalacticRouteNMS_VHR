@@ -1,10 +1,13 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_from_directory, abort
 from werkzeug.utils import secure_filename
 import os
+import base64
+import binascii
 from datetime import datetime
+from uuid import uuid4
 
 from config import DevelopmentConfig
-from database import db, System, JournalEntry, init_db
+from database import db, System, SystemImage, JournalEntry, init_db
 from save_parser import SaveFileParser
 
 app = Flask(__name__)
@@ -17,19 +20,141 @@ init_db(app)
 # Create upload folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+IMAGE_UPLOAD_FOLDER = os.path.join(app.config['UPLOAD_FOLDER'], 'system_images')
+MAP_SNAPSHOT_FOLDER = os.path.join(app.config['UPLOAD_FOLDER'], 'map_snapshots')
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+os.makedirs(IMAGE_UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(MAP_SNAPSHOT_FOLDER, exist_ok=True)
+
+
+def allowed_image_file(filename):
+    """Return True when the filename has a supported image extension."""
+    return (
+        filename
+        and '.' in filename
+        and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+    )
+
+
+def unique_upload_name(filename):
+    """Build a stable, collision-resistant upload filename."""
+    safe_name = secure_filename(filename)
+    stem, ext = os.path.splitext(safe_name)
+    stem = stem[:60] or 'image'
+    return f'{datetime.utcnow().strftime("%Y%m%d%H%M%S")}-{uuid4().hex[:10]}-{stem}{ext.lower()}'
+
+
+def save_system_image(file):
+    """Save an uploaded system image and return its stored filename."""
+    if not file or file.filename == '':
+        return None
+    if not allowed_image_file(file.filename):
+        raise ValueError('Image must be a PNG, JPG, GIF, or WebP file.')
+
+    filename = unique_upload_name(file.filename)
+    file.save(os.path.join(IMAGE_UPLOAD_FOLDER, filename))
+    return filename
+
+
+def get_map_snapshots(limit=6):
+    """Return recent saved map snapshots for display on the map page."""
+    snapshots = []
+    if not os.path.isdir(MAP_SNAPSHOT_FOLDER):
+        return snapshots
+
+    for filename in os.listdir(MAP_SNAPSHOT_FOLDER):
+        if not allowed_image_file(filename):
+            continue
+        path = os.path.join(MAP_SNAPSHOT_FOLDER, filename)
+        snapshots.append({
+            'filename': filename,
+            'created_at': datetime.fromtimestamp(os.path.getmtime(path))
+        })
+
+    return sorted(snapshots, key=lambda item: item['created_at'], reverse=True)[:limit]
+
+
+def system_color(system):
+    """Map known star/system types to a Three.js-friendly numeric color."""
+    details = f'{system.system_type or ""} {system.star_type or ""}'.lower()
+    if 'red' in details or 'm' == (system.star_type or '').strip().lower():
+        return 0xff5f57
+    if 'blue' in details or (system.star_type or '').strip().lower() in {'o', 'b'}:
+        return 0x67a8ff
+    if 'green' in details:
+        return 0x7dff9a
+    if 'binary' in details or 'exotic' in details:
+        return 0xb58cff
+    if 'white' in details or (system.star_type or '').strip().lower() == 'a':
+        return 0xf3f7ff
+    return 0xffd166
+
+
+def system_to_galaxy_object(system):
+    """Convert a stored System row into the object shape expected by galaxy.html."""
+    return {
+        'id': system.id,
+        'name': system.name,
+        'type': 'system',
+        'x': system.x,
+        'y': system.y,
+        'z': system.z,
+        'color': system_color(system),
+        'system_type': system.system_type or '',
+        'star_type': system.star_type or '',
+        'planets_count': system.planets_count,
+        'galaxy_address': system.galaxy_address or '',
+        'notes': system.notes or ''
+    }
+
+
+def import_systems(systems_data):
+    """Insert new systems and update existing systems by name."""
+    added_count = 0
+    updated_count = 0
+
+    for sys_data in systems_data:
+        if not sys_data.get('name'):
+            continue
+
+        existing = System.query.filter_by(name=sys_data['name']).first()
+        if existing:
+            for field in ('x', 'y', 'z', 'galaxy_address', 'system_type', 'star_type', 'planets_count', 'notes'):
+                if field in sys_data:
+                    setattr(existing, field, sys_data[field])
+            updated_count += 1
+        else:
+            db.session.add(System(**sys_data))
+            added_count += 1
+
+    return added_count, updated_count
+
 # ==================== Routes ====================
 
 @app.route('/')
+@app.route('/galaxy')
 def index():
-    """Home page with galaxy map"""
-    systems = System.query.all()
-    return render_template('index.html', systems=systems)
+    """Main 3D galaxy render."""
+    systems = System.query.order_by(System.discovered_at.asc()).all()
+    galaxy_objects = [system_to_galaxy_object(system) for system in systems]
+    return render_template(
+        'galaxy.html',
+        systems=systems,
+        galaxy_objects=galaxy_objects
+    )
 
 @app.route('/api/systems')
 def api_get_systems():
     """API endpoint to get all systems as JSON"""
     systems = System.query.all()
     return jsonify([system.to_dict() for system in systems])
+
+@app.route('/api/galaxy-objects')
+def api_get_galaxy_objects():
+    """API endpoint for the object shape consumed by the 3D galaxy render."""
+    systems = System.query.order_by(System.discovered_at.asc()).all()
+    return jsonify([system_to_galaxy_object(system) for system in systems])
 
 @app.route('/system/<int:system_id>')
 def view_system(system_id):
@@ -55,27 +180,109 @@ def add_system():
                 notes=request.form.get('notes', '')
             )
             db.session.add(system)
+            db.session.flush()
+
+            image_filename = save_system_image(request.files.get('image'))
+            if image_filename:
+                db.session.add(SystemImage(
+                    system_id=system.id,
+                    filename=image_filename,
+                    original_filename=secure_filename(request.files['image'].filename),
+                    caption=request.form.get('image_caption', '').strip()
+                ))
+
             db.session.commit()
             flash(f'System {system.name} added successfully!', 'success')
             return redirect(url_for('view_system', system_id=system.id))
         except Exception as e:
+            db.session.rollback()
             flash(f'Error adding system: {str(e)}', 'error')
             return redirect(url_for('add_system'))
     
     return render_template('add_system.html')
 
+@app.route('/system/<int:system_id>/images', methods=['POST'])
+def upload_system_image(system_id):
+    """Upload an image for an existing system"""
+    system = System.query.get_or_404(system_id)
+
+    try:
+        image_filename = save_system_image(request.files.get('image'))
+        if not image_filename:
+            flash('Choose an image before uploading.', 'error')
+            return redirect(url_for('view_system', system_id=system.id))
+
+        db.session.add(SystemImage(
+            system_id=system.id,
+            filename=image_filename,
+            original_filename=secure_filename(request.files['image'].filename),
+            caption=request.form.get('caption', '').strip()
+        ))
+        db.session.commit()
+        flash('Image uploaded successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error uploading image: {str(e)}', 'error')
+
+    return redirect(url_for('view_system', system_id=system.id))
+
+@app.route('/uploads/system-images/<path:filename>')
+def uploaded_system_image(filename):
+    """Serve system images from the local upload folder."""
+    if not allowed_image_file(filename):
+        abort(404)
+    return send_from_directory(IMAGE_UPLOAD_FOLDER, filename)
+
+@app.route('/uploads/map-snapshots/<path:filename>')
+def uploaded_map_snapshot(filename):
+    """Serve saved 3D map snapshots from the local upload folder."""
+    if not allowed_image_file(filename):
+        abort(404)
+    return send_from_directory(MAP_SNAPSHOT_FOLDER, filename)
+
+@app.route('/api/map-snapshots', methods=['POST'])
+def api_create_map_snapshot():
+    """Save the current 3D canvas view as a PNG snapshot."""
+    data = request.get_json(silent=True) or {}
+    image_data = data.get('image', '')
+    prefix = 'data:image/png;base64,'
+
+    if not image_data.startswith(prefix):
+        return jsonify({'error': 'Snapshot must be a PNG data URL.'}), 400
+
+    try:
+        png_bytes = base64.b64decode(image_data[len(prefix):], validate=True)
+    except (binascii.Error, ValueError):
+        return jsonify({'error': 'Snapshot data could not be decoded.'}), 400
+
+    if not png_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+        return jsonify({'error': 'Snapshot data is not a valid PNG.'}), 400
+
+    filename = f'map-{datetime.utcnow().strftime("%Y%m%d%H%M%S")}-{uuid4().hex[:10]}.png'
+    filepath = os.path.join(MAP_SNAPSHOT_FOLDER, filename)
+    with open(filepath, 'wb') as snapshot:
+        snapshot.write(png_bytes)
+
+    return jsonify({
+        'filename': filename,
+        'url': url_for('uploaded_map_snapshot', filename=filename)
+    }), 201
+
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_save():
     """Upload and parse a No Man's Sky save file"""
+    if request.method == 'GET':
+        return redirect(url_for('index'))
+
     if request.method == 'POST':
         if 'file' not in request.files:
             flash('No file provided', 'error')
-            return redirect(request.url)
+            return redirect(url_for('index'))
         
         file = request.files['file']
         if file.filename == '':
             flash('No file selected', 'error')
-            return redirect(request.url)
+            return redirect(url_for('index'))
         
         try:
             filename = secure_filename(file.filename)
@@ -87,26 +294,18 @@ def upload_save():
             parser.parse()
             systems_data = parser.extract_systems()
             
-            # Add systems to database
-            added_count = 0
-            for sys_data in systems_data:
-                try:
-                    existing = System.query.filter_by(name=sys_data['name']).first()
-                    if not existing:
-                        system = System(**sys_data)
-                        db.session.add(system)
-                        added_count += 1
-                except Exception as e:
-                    print(f"Error adding system {sys_data.get('name')}: {str(e)}")
-            
+            added_count, updated_count = import_systems(systems_data)
             db.session.commit()
-            flash(f'Successfully imported {added_count} new systems!', 'success')
+
+            if added_count or updated_count:
+                flash(f'Imported {added_count} new systems and updated {updated_count} existing systems.', 'success')
+            else:
+                flash('No systems were found in that save file.', 'warning')
             return redirect(url_for('index'))
         except Exception as e:
+            db.session.rollback()
             flash(f'Error processing save file: {str(e)}', 'error')
-            return redirect(request.url)
-    
-    return render_template('upload.html')
+            return redirect(url_for('index'))
 
 @app.route('/journal')
 def view_journal():

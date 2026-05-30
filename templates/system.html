@@ -40,6 +40,44 @@
     <p style="font-size: 0.85rem; color: #666; margin-top: 1rem;">Discovered: {{ system.discovered_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
 </div>
 
+<!-- System Images -->
+<div class="system-media-grid">
+    <section class="card">
+        <div class="section-heading">
+            <h2>System Images</h2>
+            <span>{{ system.images|length }}</span>
+        </div>
+
+        {% if system.images %}
+            <div class="image-gallery">
+                {% for image in system.images %}
+                    <figure class="system-image">
+                        <img src="{{ url_for('uploaded_system_image', filename=image.filename) }}" alt="{{ image.caption or image.original_filename or system.name }}">
+                        {% if image.caption %}
+                            <figcaption>{{ image.caption }}</figcaption>
+                        {% endif %}
+                    </figure>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted">No images uploaded for this system yet.</p>
+        {% endif %}
+    </section>
+
+    <form method="POST" action="{{ url_for('upload_system_image', system_id=system.id) }}" enctype="multipart/form-data" class="card image-upload-card">
+        <h2>Add Image</h2>
+        <div class="form-group">
+            <label for="image">Image File</label>
+            <input type="file" id="image" name="image" required accept="image/png,image/jpeg,image/gif,image/webp">
+        </div>
+        <div class="form-group">
+            <label for="caption">Caption</label>
+            <input type="text" id="caption" name="caption" placeholder="Short note for this image">
+        </div>
+        <button type="submit" class="btn">Upload Image</button>
+    </form>
+</div>
+
 <!-- Journal Entries for this System -->
 <div style="margin-top: 2rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
